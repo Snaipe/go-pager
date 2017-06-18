@@ -79,24 +79,7 @@ func translateErr(err error) error {
 	return err
 }
 
-func (p *Pager) Write(data []byte) (int, error) {
-	if p.out == nil {
-		return 0, ErrClosed
-	}
-
-	var written int
-	if p.err == nil {
-		written, p.err = p.out.Write(data)
-		p.err = translateErr(p.err)
-	}
-	return written, p.err
-}
-
-func (p *Pager) Close() error {
-	if p.out == nil {
-		return p.err
-	}
-
+func (p *Pager) cleanup() {
 	if p.proc != nil {
 		err := translateErr(p.out.(io.Closer).Close())
 		if p.err == nil {
@@ -115,8 +98,29 @@ func (p *Pager) Close() error {
 			fl.Flush()
 		}
 	}
-
 	p.out = nil
+}
+
+func (p *Pager) Write(data []byte) (n int, err error) {
+	if p.out == nil {
+		return 0, ErrClosed
+	}
+
+	if p.err == nil {
+		n, err = p.out.Write(data)
+		p.err = translateErr(err)
+		if p.err == ErrClosed {
+			p.cleanup()
+		}
+		err = p.err
+	}
+	return
+}
+
+func (p *Pager) Close() error {
+	if p.out != nil {
+		p.cleanup()
+	}
 	return p.err
 }
 
