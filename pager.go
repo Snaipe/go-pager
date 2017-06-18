@@ -135,9 +135,8 @@ func (p *Pager) Write(data []byte) (n int, err error) {
 		if p.err == ErrClosed {
 			p.cleanup()
 		}
-		err = p.err
 	}
-	return
+	return n, p.err
 }
 
 // Close closes the write end of the pager and frees all ressources associated
