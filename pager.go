@@ -114,10 +114,17 @@ func (p *Pager) Close() error {
 	}
 
 	if p.proc != nil {
-		p.err = translateErr(p.out.(io.Closer).Close())
-		procerr := p.proc.Wait()
+		err := translateErr(p.out.(io.Closer).Close())
 		if p.err == nil {
-			p.err = procerr
+			p.err = err
+		}
+
+		err = p.proc.Wait()
+		// There is a very good chance that any error that happened
+		// during Close or previous writes are caused by an abnormal exit
+		// of the pager, so override any error with this.
+		if err != nil {
+			p.err = err
 		}
 
 		if fl, ok := p.proc.Stdout.(flusher); ok {
