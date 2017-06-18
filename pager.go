@@ -139,6 +139,28 @@ func (p *Pager) Write(data []byte) (n int, err error) {
 	return n, p.err
 }
 
+// ReadFrom implements io.ReaderFrom. It is equivalent to a call to io.Copy
+// using the underlying write end of the pager as destination.
+func (p *Pager) ReadFrom(rd io.Reader) (n int64, err error) {
+	if p.out == nil {
+		return 0, ErrClosed
+	}
+
+	if p.err == nil {
+		if rf, ok := p.out.(io.ReaderFrom); ok {
+			n, err = rf.ReadFrom(rd)
+		} else {
+			n, err = io.Copy(p.out, rd)
+		}
+
+		p.err = translateErr(err)
+		if p.err == ErrClosed {
+			p.cleanup()
+		}
+	}
+	return n, p.err
+}
+
 // Close closes the write end of the pager and frees all ressources associated
 // with it. It returns the last write error that occured, or any error from
 // the pager process.
