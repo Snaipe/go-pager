@@ -19,7 +19,7 @@ import (
 
 var (
 	ErrNoCommand = errors.New("No pager command to execute.")
-	ErrUserClose = errors.New("User closed the pager.")
+	ErrClosed    = errors.New("The pager was closed.")
 )
 
 type Pager struct {
@@ -90,17 +90,21 @@ func OpenPager(command string, dst io.Writer) (*Pager, error) {
 
 func translateErr(err error) error {
 	if perr, ok := err.(*os.PathError); ok && perr.Err == syscall.EPIPE {
-		return ErrUserClose
+		return ErrClosed
 	}
 	return err
 }
 
 func (p *Pager) Write(data []byte) (int, error) {
+	if p.out == nil {
+		return 0, ErrClosed
+	}
+
 	var written int
 	if p.err == nil {
 		written, p.err = p.out.Write(data)
+		p.err = translateErr(p.err)
 	}
-	p.err = translateErr(p.err)
 	return written, p.err
 }
 
