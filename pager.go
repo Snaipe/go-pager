@@ -13,6 +13,8 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var (
@@ -24,12 +26,21 @@ type Pager struct {
 	Command string
 
 	proc *exec.Cmd
-	out  io.WriteCloser
+	out  io.Writer
 	err  error
 }
 
 type flusher interface {
 	Flush() error
+}
+
+type filebacked interface {
+	Fd() uintptr
+}
+
+func isatty(wr io.Writer) bool {
+	f, ok := wr.(filebacked)
+	return ok && terminal.IsTerminal(int(f.Fd()))
 }
 
 func Open() (*Pager, error) {
@@ -49,6 +60,11 @@ func OpenPager(command string, out io.Writer) (*Pager, error) {
 
 	if out == nil {
 		out = os.Stdout
+	}
+
+	if !isatty(out) {
+		p.out = out
+		return p, nil
 	}
 
 	var err error
@@ -96,14 +112,16 @@ func (p *Pager) Close() error {
 		return p.err
 	}
 
-	p.err = translateErr(p.out.Close())
-	procerr := p.proc.Wait()
-	if p.err == nil {
-		p.err = procerr
-	}
+	if p.proc != nil {
+		p.err = translateErr(p.out.(io.Closer).Close())
+		procerr := p.proc.Wait()
+		if p.err == nil {
+			p.err = procerr
+		}
 
-	if fl, ok := p.proc.Stdout.(flusher); ok {
-		fl.Flush()
+		if fl, ok := p.proc.Stdout.(flusher); ok {
+			fl.Flush()
+		}
 	}
 
 	p.out = nil
