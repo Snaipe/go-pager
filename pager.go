@@ -39,6 +39,14 @@ func Open() (*Pager, error) {
 func OpenPager(command string, out io.Writer) (*Pager, error) {
 	p := &Pager{Command: command}
 
+	cmd := p.Command
+	if cmd == "" {
+		cmd = os.Getenv("PAGER")
+	}
+	if cmd == "" {
+		return nil, ErrNoCommand
+	}
+
 	if out == nil {
 		out = os.Stdout
 	}
@@ -49,14 +57,6 @@ func OpenPager(command string, out io.Writer) (*Pager, error) {
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	cmd := p.Command
-	if cmd == "" {
-		cmd = os.Getenv("PAGER")
-	}
-	if cmd == "" {
-		return nil, ErrNoCommand
 	}
 
 	p.proc = exec.Command("sh", "-c", cmd)
