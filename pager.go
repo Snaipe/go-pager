@@ -23,8 +23,6 @@ var (
 )
 
 type Pager struct {
-	Command string
-
 	proc *exec.Cmd
 	out  io.Writer
 	err  error
@@ -47,14 +45,13 @@ func Open() (*Pager, error) {
 	return OpenPager("", nil)
 }
 
-func OpenPager(command string, out io.Writer) (*Pager, error) {
-	p := &Pager{Command: command}
+func OpenPager(command string, dst io.Writer) (*Pager, error) {
+	p := &Pager{}
 
-	cmd := p.Command
-	if cmd == "" {
-		cmd = os.Getenv("PAGER")
+	if command == "" {
+		command = os.Getenv("PAGER")
 	}
-	if cmd == "" {
+	if command == "" {
 		return nil, ErrNoCommand
 	}
 
@@ -75,7 +72,7 @@ func OpenPager(command string, out io.Writer) (*Pager, error) {
 		}
 	}
 
-	p.proc = exec.Command("sh", "-c", cmd)
+	p.proc = exec.Command("sh", "-c", command)
 	p.proc.Stdout = out
 	p.proc.Stderr = os.Stderr
 	p.out, err = p.proc.StdinPipe()
