@@ -13,8 +13,6 @@ import (
 	"os"
 	"os/exec"
 	"syscall"
-
-	"golang.org/x/crypto/ssh/terminal"
 )
 
 var (
@@ -30,15 +28,6 @@ type Pager struct {
 
 type flusher interface {
 	Flush() error
-}
-
-type filebacked interface {
-	Fd() uintptr
-}
-
-func isatty(wr io.Writer) bool {
-	f, ok := wr.(filebacked)
-	return ok && terminal.IsTerminal(int(f.Fd()))
 }
 
 func Open() (*Pager, error) {
@@ -57,11 +46,6 @@ func OpenPager(command string, dst io.Writer) (*Pager, error) {
 
 	if out == nil {
 		out = os.Stdout
-	}
-
-	if !isatty(out) {
-		p.out = out
-		return p, nil
 	}
 
 	var err error
